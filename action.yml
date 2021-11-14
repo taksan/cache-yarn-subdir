@@ -1,0 +1,32 @@
+name: 'cache yarn folder'
+description: 'Will cache the folder'
+inputs:
+  folder:
+    description: 'folder to cache'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: create cache name
+      id: create-cache-name
+      shell: bash
+      run: |
+        normalized_name=$(echo "${{ inputs.folder }}" | sed 's#[^a-zA-Z0-9_]#_#g')
+        echo $normalized_name
+        echo "::set-output name=cache_key::${{ runner.os }}-yarn-at-$normalized_name"
+
+    - name: get cache path
+      id: cache-dir-path
+      shell: bash
+      run: |
+        cd ${{ inputs.folder }}
+        echo "::set-output name=dir::$(yarn config get cacheFolder)"
+
+    - name: Cache yarn folder
+      uses: actions/cache@v2
+      with:
+        path: ${{ steps.cache-dir-path.outputs.dir }}
+        key: ${{ runner.os }}-yarn-${{ hashFiles(format('{0}/{1}', inputs.folder, 'yarn.lock')) }}
+        restore-keys: |
+          ${{ steps.create-cache-name.outputs.cache_key }}
+
